@@ -688,9 +688,9 @@ def print_error():
 
 def trigger_event(func : Callable[[], None]):
     global exec_comand_event
-    #if(not play):
-     #   print("SCRIPT NOT PLAYING")
-      #  return
+    if(not play):
+        print("SCRIPT NOT PLAYING")
+        return
     if(exec_comand_event.is_set()):
         func()
     exec_comand_event.set()
