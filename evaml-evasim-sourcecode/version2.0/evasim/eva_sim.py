@@ -21,6 +21,8 @@ from tkinter import messagebox
 from tkinter import filedialog as fd
 import tkinter
 
+# ----- API -----
+from typing import Callable
 
 # Adapter module for the audio library
 # Depending on the OS it matters and defines a function called "playsound"
@@ -293,7 +295,8 @@ def runScript():
 
 # Activate the script play var
 def stopScript(self):
-    global play, EVA_ROBOT_STATE
+    global play, EVA_ROBOT_STATE, exec_comand_event
+
     gui.bt_run_sim['state'] = NORMAL
     gui.bt_run_sim.bind("<Button-1>", setSimMode)
     if ROBOT_MODE_ENABLED: gui.bt_run_robot['state'] = NORMAL
@@ -304,6 +307,11 @@ def stopScript(self):
     gui.bt_reload['state'] = NORMAL
     gui.bt_import.bind("<Button-1>", importFileThread)
     play = False # desativa a var de play do script. Faz com que o script seja interrompido
+
+    # API | Unblock the thread to finish the script
+    exec_comand_event.set()
+    exec_comand_event.clear()
+
     EVA_ROBOT_STATE = "FREE" # libera a execução, caso esteja executando algum comando bloqueante
 
 # Import file thread
@@ -671,11 +679,45 @@ def light(color, state):
         gui.canvas.create_image(340, 285, image = gui.bulb_image) # redesenha a lampada
 
 
+# -------------- API ------------
+
+exec_comand_event = threading.Event()
+
+def print_error():
+    print("EVENT IN PROCESS")
+
+def trigger_event(func : Callable[[], None]):
+    global exec_comand_event
+    #if(not play):
+     #   print("SCRIPT NOT PLAYING")
+      #  return
+    if(exec_comand_event.is_set()):
+        func()
+    exec_comand_event.set()
+
+# Use for test only. Excecute the next command if send 's' to the terminal
+def next_command():
+    while(True):
+        if(input() == 's'):
+            trigger_event(print_error)
+
+threading.Thread(target=next_command, args=()).start()
+
+
 # Virtual machine functions
 # Execute the commands
 def exec_comando(node):
     global EVA_ROBOT_STATE
     global img_neutral, img_happy, img_angry, img_sad, img_surprise
+    
+    # API | Get global event
+    global exec_comand_event, play
+
+    # API | Wait thread until event is set
+    exec_comand_event.wait()
+        
+    # clear() call is at the end of the function
+
     if node.tag == "voice":
         gui.terminal.insert(INSERT, "\nSTATE: Selected Voice => " + node.attrib["tone"])
         gui.terminal.see(tkinter.END)
@@ -1675,6 +1717,8 @@ def exec_comando(node):
                 time.sleep(0.5)
             ledAnimation("STOP")
 
+    exec_comand_event.clear()
+
 
 def busca_commando(key : str): # The keys are strings
 	# Search in settings. This is because "voice" is in settings and voice is always the first element
@@ -1704,7 +1748,8 @@ def busca_links(att_from):
 
 # Execute commands in the link stack
 def link_process(anterior = -1):
-    global play, fila_links
+    global play, fila_links, exec_comand_event
+
     print("Play state............", play)
     gui.terminal.insert(INSERT, "\n---------------------------------------------------")
     gui.terminal.insert(INSERT, "\nSTATE: Starting the script: " + root.attrib["name"] + "_EvaML.xml")
@@ -1767,6 +1812,5 @@ def link_process(anterior = -1):
     gui.bt_import.bind("<Button-1>", importFileThread)
     gui.bt_stop['state'] = DISABLED
     gui.bt_stop.unbind("<Button1>")
-
 
 gui.mainloop()
