@@ -5,6 +5,7 @@
         <audioEffects mode="ON" />
     </settings>
     <script>
+    
         <counter var="PONTOS" op="=" value="0" key="1001" />
         <counter var="QUESTIONSELECTED" op="=" value="0" key="1002" />
         <counter var="PERGUNTA1" op="=" value="0" key="1003" />
@@ -12,7 +13,7 @@
         <counter var="PERGUNTA3" op="=" value="0" key="1005" />
         <counter var="ASKEDQUESTIONS" op="=" value="0" key="1006" />
         <evaEmotion emotion="HAPPY" key="1007" />
-            <light state="ON" color="PINK" key="1008" />
+            <motion type="NO" key="1008" />
             <talk key="1009">Olá, eu sou a robô EVA. Qual o seu nome? </talk>
             
             <talk key="1010"> Olá Gabi. Vamos jogar perguntas e respostas! </talk>

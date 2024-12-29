@@ -23,6 +23,7 @@ import tkinter
 
 # ----- API -----
 from typing import Callable
+from api_controllers import state_controller
 
 # Adapter module for the audio library
 # Depending on the OS it matters and defines a function called "playsound"
@@ -37,24 +38,25 @@ import config # Module with the constants and parameters used in other modules.
 TTS_IBM_WATSON = False # Define the use of IBM Watson service
 ROBOT_MODE_ENABLED = False # 
 
-if len(sys.argv) > 1: # Verify if is an argument in the command line
-    for parameter in sys.argv[1:]: # Sweep all parameters
-        if parameter.lower() == "tts=ibm-watson": # Watson was selected
-            TTS_IBM_WATSON = True
-        elif parameter.lower() == "robot-mode=on":
-            ROBOT_MODE_ENABLED = True
-        elif parameter.lower() == "h" or parameter.lower() == "-h" or parameter.lower() == "help" or parameter.lower() == "-help":
-            print("\n############################################################")
-            print("                   EvaSIM Help Information")
-            print("############################################################")
-            print("-help, help\tShow all available parameters.") 
-            print("tts=ibm-watson\tUse the IBM Watson TTS service.") 
-            print("robot-mode=on\tEnable robot mode control and execution.")
-            print("############################################################\n")
-            exit(1)
-        else:
-            print("\nSorry, I guess you entered an illegal parameter.")
-            exit(1)
+if __name__ == "__main__":
+    if len(sys.argv) > 1: # Verify if is an argument in the command line
+        for parameter in sys.argv[1:]: # Sweep all parameters
+            if parameter.lower() == "tts=ibm-watson": # Watson was selected
+                TTS_IBM_WATSON = True
+            elif parameter.lower() == "robot-mode=on":
+                ROBOT_MODE_ENABLED = True
+            elif parameter.lower() == "h" or parameter.lower() == "-h" or parameter.lower() == "help" or parameter.lower() == "-help":
+                print("\n############################################################")
+                print("                   EvaSIM Help Information")
+                print("############################################################")
+                print("-help, help\tShow all available parameters.") 
+                print("tts=ibm-watson\tUse the IBM Watson TTS service.") 
+                print("robot-mode=on\tEnable robot mode control and execution.")
+                print("############################################################\n")
+                exit(1)
+            else:
+                print("\nSorry, I guess you entered an illegal parameter.")
+                exit(1)
             
 # Select the GUI definition file for the host operating system
 if platform.system() == "Linux":
@@ -159,8 +161,13 @@ root = {}
 script_node = {}
 links_node = {}
 fila_links =  [] # Link queue (commands)
+
+# API
+from globals.globals import update_play, get_play
+# A variável play foi tornada global e está em um arquivo separado
+# play = false  # Play status of the script. This variable has an influence on the function. link_process
+
 thread_pop_pause = False
-play = False # Play status of the script. This variable has an influence on the function. link_process
 script_file = "" # Variable that stores the pointer to the xml script file on disk.
 
 # Variable control function that blocks popups
@@ -171,35 +178,6 @@ def lock_thread_pop():
 def unlock_thread_pop():
     global thread_pop_pause
     thread_pop_pause = False
-
-
-# Create the Tkinter window
-window = Tk()
-window.geometry("0x0+100+40")
-gui = EvaSIM_gui.Gui(window) # Instance of the Gui class within the graphical user interface definition module
-
-font1 = gui.font1 # Sse the same font defined in the GUI module
-
-# EVA expressions images
-im_eyes_neutral = PhotoImage(file = "images/eyes_neutral.png")
-im_eyes_angry = PhotoImage(file = "images/eyes_angry.png")
-im_eyes_sad = PhotoImage(file = "images/eyes_sad.png")
-im_eyes_happy = PhotoImage(file = "images/eyes_happy.png")
-im_eyes_fear = PhotoImage(file = "images/eyes_fear.png")
-im_eyes_surprise = PhotoImage(file = "images/eyes_surprise.png")
-im_eyes_disgust = PhotoImage(file = "images/eyes_disgust.png")
-im_eyes_inlove = PhotoImage(file = "images/eyes_inlove.png")
-im_eyes_on = PhotoImage(file = "images/eyes_on.png")
-
-# Matrix Voice images
-im_matrix_blue = PhotoImage(file = "images/matrix_blue.png")
-im_matrix_green = PhotoImage(file = "images/matrix_green.png")
-im_matrix_yellow = PhotoImage(file = "images/matrix_yellow.png")
-im_matrix_white = PhotoImage(file = "images/matrix_white.png")
-im_matrix_red = PhotoImage(file = "images/matrix_red.png")
-im_matrix_grey = PhotoImage(file = "images/matrix_grey.png")
-im_bt_play = PhotoImage(file = "images/bt_play.png")
-im_bt_stop = PhotoImage(file = "images/bt_stop.png")
 
 
 # Function to write memory data to the variable table
@@ -266,7 +244,10 @@ def setEVAMode(self):
 
 # Activate the thread that runs the script
 def runScript():
-    global play, fila_links
+    # API
+    # global play
+
+    global fila_links
     # initialize the robot memory
     print("Intializing the robot memory.")
     eva_memory.var_dolar = []
@@ -288,14 +269,21 @@ def runScript():
     gui.bt_stop['state'] = NORMAL
     gui.bt_stop.bind("<Button-1>", stopScript)
     gui.bt_import.unbind("<Button-1>")
-    play = True # ativa a var do play do script
+    # API
+    update_play(True) # ativa a var do play do script
+
     root.find("settings").find("voice").attrib["key"]
     busca_links(root.find("settings").find("voice").attrib["key"]) # o primeiro elemento da interação é o voice
     threading.Thread(target=link_process, args=()).start()
 
 # Activate the script play var
 def stopScript(self):
-    global play, EVA_ROBOT_STATE, exec_comand_event
+    # API
+    # global play 
+    global EVA_ROBOT_STATE
+
+    # API
+    # global exec_comand_event
 
     gui.bt_run_sim['state'] = NORMAL
     gui.bt_run_sim.bind("<Button-1>", setSimMode)
@@ -306,11 +294,11 @@ def stopScript(self):
     gui.bt_import['state'] = NORMAL
     gui.bt_reload['state'] = NORMAL
     gui.bt_import.bind("<Button-1>", importFileThread)
-    play = False # desativa a var de play do script. Faz com que o script seja interrompido
+    update_play(False) # desativa a var de play do script. Faz com que o script seja interrompido
 
     # API | Unblock the thread to finish the script
-    exec_comand_event.set()
-    exec_comand_event.clear()
+    get_event().set()
+    get_event().clear()
 
     EVA_ROBOT_STATE = "FREE" # libera a execução, caso esteja executando algum comando bloqueante
 
@@ -372,15 +360,6 @@ def clear_terminal(self):
     gui.terminal.insert(INSERT, "                                                                                                   Version 2.0 - UFF / MidiaCom / CICESE - [2024]\n")
     gui.terminal.insert(INSERT, "=============================================================================================================================")
 
-# Connect callbacks to buttons
-# The use of another module to define the GUI did not allow callbacks to be associated with buttons at the time of their creation
-# Using the bind method to define callbacks has a limitation
-# The element, even in the "disable" state, continues to respond to mouse click events
-# Therefore, when disabling a button, it is necessary to use "unbind" to unbind the callback from the button
-# If the button is placed in the "normal" state, the callback must be reset using "bind" again
-gui.bt_power.bind("<Button-1>", powerOn)
-gui.bt_clear.bind("<Button-1>", clear_terminal)
-
 
 # WoZ light functions
 def woz_light_blue(self):
@@ -398,16 +377,6 @@ def woz_light_yellow(self):
 def woz_light_white(self):
     client.publish(topic_base + "/light", "WHITE|ON")
 
-
-
-# WoZ light buttons binding
-gui.bt_bulb_green_btn.bind("<Button-1>", woz_light_green)
-gui.bt_bulb_blue_btn.bind("<Button-1>", woz_light_blue)
-gui.bt_bulb_off_btn.bind("<Button-1>", woz_light_black)
-gui.bt_bulb_pink_btn.bind("<Button-1>", woz_light_pink)
-gui.bt_bulb_red_btn.bind("<Button-1>", woz_light_red)
-gui.bt_bulb_yellow_btn.bind("<Button-1>", woz_light_yellow)
-gui.bt_bulb_white_btn.bind("<Button-1>", woz_light_white)
 
 
 # WoZ expressions functions
@@ -428,16 +397,6 @@ def woz_expression_disgust(self):
 def woz_expression_inlove(self):
     client.publish(topic_base + "/evaEmotion", "INLOVE")
 
-
-# WoZ expression buttons binding
-gui.bt_exp_angry.bind("<Button-1>", woz_expression_angry)
-gui.bt_exp_fear.bind("<Button-1>", woz_expression_fear)
-gui.bt_exp_happy.bind("<Button-1>", woz_expression_happy)
-gui.bt_exp_neutral.bind("<Button-1>", woz_expression_neutral)
-gui.bt_exp_sad.bind("<Button-1>", woz_expression_sad)
-gui.bt_exp_surprise.bind("<Button-1>", woz_expression_surprise)
-gui.bt_exp_disgust.bind("<Button-1>", woz_expression_disgust)
-gui.bt_exp_inlove.bind("<Button-1>", woz_expression_inlove)
 
 # WoZ led functions
 def woz_led_stop(self):
@@ -470,19 +429,6 @@ def woz_led_surprise(self):
 def woz_led_white(self):
     client.publish(topic_base + "/leds", "STOP")
     client.publish(topic_base + "/leds", "WHITE")
-
-
-# WoZ led buttons binding
-gui.bt_led_stop.bind("<Button-1>", woz_led_stop)
-gui.bt_led_angry.bind("<Button-1>", woz_led_angry)
-gui.bt_led_sad.bind("<Button-1>", woz_led_sad)
-gui.bt_led_angry2.bind("<Button-1>", woz_led_angry2)
-gui.bt_led_happy.bind("<Button-1>", woz_led_happy)
-gui.bt_led_listen.bind("<Button-1>", woz_led_listen)
-gui.bt_led_rainbow.bind("<Button-1>", woz_led_rainbow)
-gui.bt_led_speak.bind("<Button-1>", woz_led_speak)
-gui.bt_led_surprise.bind("<Button-1>", woz_led_surprise)
-gui.bt_led_white.bind("<Button-1>", woz_led_white)
 
 
 # WoZ head motion functions
@@ -549,40 +495,6 @@ def woz_arm_right_motion_shake(self):
 
 
 
-# Woz arms motion buttons binding
-gui.bt_arm_left_motion_up.bind("<Button-1>", woz_arm_left_motion_up)
-gui.bt_arm_right_motion_up.bind("<Button-1>", woz_arm_right_motion_up)
-gui.bt_arm_left_motion_down.bind("<Button-1>", woz_arm_left_motion_down)
-gui.bt_arm_right_motion_down.bind("<Button-1>", woz_arm_right_motion_down)
-gui.bt_arm_left_motion_pos_0.bind("<Button-1>", woz_arm_left_motion_pos_0)
-gui.bt_arm_right_motion_pos_0.bind("<Button-1>", woz_arm_right_motion_pos_0)
-gui.bt_arm_left_motion_pos_1.bind("<Button-1>", woz_arm_left_motion_pos_1)
-gui.bt_arm_right_motion_pos_1.bind("<Button-1>", woz_arm_right_motion_pos_1)
-gui.bt_arm_left_motion_pos_2.bind("<Button-1>", woz_arm_left_motion_pos_2)
-gui.bt_arm_right_motion_pos_2.bind("<Button-1>", woz_arm_right_motion_pos_2)
-gui.bt_arm_left_motion_pos_3.bind("<Button-1>", woz_arm_left_motion_pos_3)
-gui.bt_arm_right_motion_pos_3.bind("<Button-1>", woz_arm_right_motion_pos_3)
-gui.bt_arm_left_motion_shake.bind("<Button-1>", woz_arm_left_motion_shake)
-gui.bt_arm_right_motion_shake.bind("<Button-1>", woz_arm_right_motion_shake)
-
-# WoZ head motion buttons binding
-gui.bt_head_motion_yes.bind("<Button-1>", woz_head_motion_yes)
-gui.bt_head_motion_no.bind("<Button-1>", woz_head_motion_no)
-gui.bt_head_motion_center.bind("<Button-1>", woz_head_motion_center)
-gui.bt_head_motion_left.bind("<Button-1>", woz_head_motion_left)
-gui.bt_head_motion_right.bind("<Button-1>", woz_head_motion_right)
-gui.bt_head_motion_up.bind("<Button-1>", woz_head_motion_up)
-gui.bt_head_motion_down.bind("<Button-1>", woz_head_motion_down)
-gui.bt_head_motion_2left.bind("<Button-1>", woz_head_motion_2left)
-gui.bt_head_motion_2right.bind("<Button-1>", woz_head_motion_2right)
-gui.bt_head_motion_2up.bind("<Button-1>", woz_head_motion_2up)
-gui.bt_head_motion_2down.bind("<Button-1>", woz_head_motion_2down)
-gui.bt_head_motion_up_left.bind("<Button-1>", woz_head_motion_up_left)
-gui.bt_head_motion_up_right.bind("<Button-1>", woz_head_motion_up_right)
-gui.bt_head_motion_down_left.bind("<Button-1>", woz_head_motion_down_left)
-gui.bt_head_motion_down_right.bind("<Button-1>", woz_head_motion_down_right)
-
-
 # TTS function
 def woz_tts(self):
     client.publish(topic_base + "/log", "EVA will try to speak a text: " + gui.msg_tts_text.get('1.0','end').strip())
@@ -590,9 +502,6 @@ def woz_tts(self):
     print(voice_option + "|" + gui.msg_tts_text.get('1.0','end').strip())
     client.publish(topic_base + "/talk", voice_option + "|" + gui.msg_tts_text.get('1.0','end'))
 
-
-# TTS buttons binding
-gui.bt_send_tts.bind("<Button-1>", woz_tts)
 
 
 # Led "animations"
@@ -681,19 +590,20 @@ def light(color, state):
 
 # -------------- API ------------
 
-exec_comand_event = threading.Event()
-
+# exec_comand_event = threading.Event()
+from globals.globals import get_event
 def print_error():
     print("EVENT IN PROCESS")
 
-def trigger_event(func : Callable[[], None]):
-    global exec_comand_event
-    if(not play):
-        print("SCRIPT NOT PLAYING")
-        return
-    if(exec_comand_event.is_set()):
-        func()
-    exec_comand_event.set()
+def trigger_event():
+    # global exec_comand_event
+    # API
+    # global play
+    if not get_play():
+        print("SCRIPT NAO RODANDO")
+
+    print("EXEUTOU")
+    get_event().set()
 
 # Use for test only. Excecute the next command if send 's' to the terminal
 def next_command():
@@ -709,14 +619,12 @@ threading.Thread(target=next_command, args=()).start()
 def exec_comando(node):
     global EVA_ROBOT_STATE
     global img_neutral, img_happy, img_angry, img_sad, img_surprise
-    
-    # API | Get global event
-    global exec_comand_event, play
 
     # API | Wait thread until event is set
-    exec_comand_event.wait()
+    get_event().wait()
         
     # clear() call is at the end of the function
+    # trigger_event() from state_controller is at the end of the function
 
     if node.tag == "voice":
         gui.terminal.insert(INSERT, "\nSTATE: Selected Voice => " + node.attrib["tone"])
@@ -727,18 +635,27 @@ def exec_comando(node):
 
 
     if node.tag == "motion": # Movement of the head and arms
+        print("ENTROU AQUI")
         if node.get("left-arm") != None: # Move the left arm
             gui.terminal.insert(INSERT, "\nSTATE: Moving the left arm! Movement type => " + node.attrib["left-arm"], "motion")
+            #API
+            state_controller.command_motion("left-arm", node.attrib["left-arm"])
             gui.terminal.see(tkinter.END)
         if node.get("right-arm") != None: # Move the right arm
             gui.terminal.insert(INSERT, "\nSTATE: Moving the right arm! Movement type => " + node.attrib["right-arm"], "motion")
+            #API
+            state_controller.command_motion("right-arm", node.attrib["right-arm"])
             gui.terminal.see(tkinter.END)
         if node.get("head") != None: # Move head with the new format (<head> element)
                 gui.terminal.insert(INSERT, "\nSTATE: Moving the head! Movement type => " + node.attrib["head"], "motion")
+                #API
+                state_controller.command_motion("head", node.attrib["head"])
                 gui.terminal.see(tkinter.END)
         else: # Check if the old version was used
             if node.get("type") != None: # Maintaining compatibility with the old version of the motion element
                 gui.terminal.insert(INSERT, "\nSTATE: Moving the head! Movement type => " + node.attrib["type"], "motion")
+                #API
+                state_controller.command_motion("type", node.attrib["type"])
                 gui.terminal.see(tkinter.END)
         print("Moving the head and/or the arms.")
         if RUNNING_MODE == "EVA_ROBOT":
@@ -999,9 +916,12 @@ def exec_comando(node):
             
         # This part implements the random text generated by using the / character
         texto = texto.split(sep="/") # Text becomes a list with the number of sentences divided by character. /
-        print(texto)
         ind_random = rnd.randint(0, len(texto)-1)
         gui.terminal.insert(INSERT, '\nSTATE: Speaking: "' + texto[ind_random] + '"')
+        
+        #API
+        state_controller.command_talk(texto[ind_random])
+
         gui.terminal.see(tkinter.END)
 
         if RUNNING_MODE == "EVA_ROBOT":
@@ -1717,7 +1637,9 @@ def exec_comando(node):
                 time.sleep(0.5)
             ledAnimation("STOP")
 
-    exec_comand_event.clear()
+    # API
+    state_controller.trigger_event()
+    get_event().clear()
 
 
 def busca_commando(key : str): # The keys are strings
@@ -1748,9 +1670,11 @@ def busca_links(att_from):
 
 # Execute commands in the link stack
 def link_process(anterior = -1):
-    global play, fila_links, exec_comand_event
+    # API
+    # global play 
+    global fila_links
 
-    print("Play state............", play)
+    print("Play state............", get_play())
     gui.terminal.insert(INSERT, "\n---------------------------------------------------")
     gui.terminal.insert(INSERT, "\nSTATE: Starting the script: " + root.attrib["name"] + "_EvaML.xml")
     gui.terminal.see(tkinter.END)
@@ -1758,7 +1682,8 @@ def link_process(anterior = -1):
     if RUNNING_MODE == "EVA_ROBOT":
         client.publish(topic_base + "/log", "Starting the script: " + root.attrib["name"] + "_EvaML.xml")
 
-    while (len(fila_links) != 0) and (play == True):
+    # API | Play alterado para get_play()
+    while (len(fila_links) != 0) and (get_play() == True):
         from_key = fila_links[0].attrib["from"] # Key of the command to execute
         to_key = fila_links[0].attrib["to"] # Key of next command
         comando_from = busca_commando(from_key).tag # Tag of the command to be executed
@@ -1813,4 +1738,116 @@ def link_process(anterior = -1):
     gui.bt_stop['state'] = DISABLED
     gui.bt_stop.unbind("<Button1>")
 
-gui.mainloop()
+def run_uvicorn():
+    import uvicorn
+    uvicorn.run("eva_api.main:app", host="127.0.0.1", port=8000)
+
+if __name__ == "__main__":
+    # Create the Tkinter window
+    window = Tk()
+    window.geometry("0x0+100+40")
+    gui = EvaSIM_gui.Gui(window) # Instance of the Gui class within the graphical user interface definition module
+
+    font1 = gui.font1 # Sse the same font defined in the GUI module
+
+    # EVA expressions images
+    im_eyes_neutral = PhotoImage(file = "images/eyes_neutral.png")
+    im_eyes_angry = PhotoImage(file = "images/eyes_angry.png")
+    im_eyes_sad = PhotoImage(file = "images/eyes_sad.png")
+    im_eyes_happy = PhotoImage(file = "images/eyes_happy.png")
+    im_eyes_fear = PhotoImage(file = "images/eyes_fear.png")
+    im_eyes_surprise = PhotoImage(file = "images/eyes_surprise.png")
+    im_eyes_disgust = PhotoImage(file = "images/eyes_disgust.png")
+    im_eyes_inlove = PhotoImage(file = "images/eyes_inlove.png")
+    im_eyes_on = PhotoImage(file = "images/eyes_on.png")
+
+    # Matrix Voice images
+    im_matrix_blue = PhotoImage(file = "images/matrix_blue.png")
+    im_matrix_green = PhotoImage(file = "images/matrix_green.png")
+    im_matrix_yellow = PhotoImage(file = "images/matrix_yellow.png")
+    im_matrix_white = PhotoImage(file = "images/matrix_white.png")
+    im_matrix_red = PhotoImage(file = "images/matrix_red.png")
+    im_matrix_grey = PhotoImage(file = "images/matrix_grey.png")
+    im_bt_play = PhotoImage(file = "images/bt_play.png")
+    im_bt_stop = PhotoImage(file = "images/bt_stop.png")
+
+    # Connect callbacks to buttons
+    # The use of another module to define the GUI did not allow callbacks to be associated with buttons at the time of their creation
+    # Using the bind method to define callbacks has a limitation
+    # The element, even in the "disable" state, continues to respond to mouse click events
+    # Therefore, when disabling a button, it is necessary to use "unbind" to unbind the callback from the button
+    # If the button is placed in the "normal" state, the callback must be reset using "bind" again
+    gui.bt_power.bind("<Button-1>", powerOn)
+    gui.bt_clear.bind("<Button-1>", clear_terminal)
+
+    # WoZ light buttons binding
+    gui.bt_bulb_green_btn.bind("<Button-1>", woz_light_green)
+    gui.bt_bulb_blue_btn.bind("<Button-1>", woz_light_blue)
+    gui.bt_bulb_off_btn.bind("<Button-1>", woz_light_black)
+    gui.bt_bulb_pink_btn.bind("<Button-1>", woz_light_pink)
+    gui.bt_bulb_red_btn.bind("<Button-1>", woz_light_red)
+    gui.bt_bulb_yellow_btn.bind("<Button-1>", woz_light_yellow)
+    gui.bt_bulb_white_btn.bind("<Button-1>", woz_light_white)
+
+    # WoZ expression buttons binding
+    gui.bt_exp_angry.bind("<Button-1>", woz_expression_angry)
+    gui.bt_exp_fear.bind("<Button-1>", woz_expression_fear)
+    gui.bt_exp_happy.bind("<Button-1>", woz_expression_happy)
+    gui.bt_exp_neutral.bind("<Button-1>", woz_expression_neutral)
+    gui.bt_exp_sad.bind("<Button-1>", woz_expression_sad)
+    gui.bt_exp_surprise.bind("<Button-1>", woz_expression_surprise)
+    gui.bt_exp_disgust.bind("<Button-1>", woz_expression_disgust)
+    gui.bt_exp_inlove.bind("<Button-1>", woz_expression_inlove)
+
+    # WoZ led buttons binding
+    gui.bt_led_stop.bind("<Button-1>", woz_led_stop)
+    gui.bt_led_angry.bind("<Button-1>", woz_led_angry)
+    gui.bt_led_sad.bind("<Button-1>", woz_led_sad)
+    gui.bt_led_angry2.bind("<Button-1>", woz_led_angry2)
+    gui.bt_led_happy.bind("<Button-1>", woz_led_happy)
+    gui.bt_led_listen.bind("<Button-1>", woz_led_listen)
+    gui.bt_led_rainbow.bind("<Button-1>", woz_led_rainbow)
+    gui.bt_led_speak.bind("<Button-1>", woz_led_speak)
+    gui.bt_led_surprise.bind("<Button-1>", woz_led_surprise)
+    gui.bt_led_white.bind("<Button-1>", woz_led_white)
+
+    # Woz arms motion buttons binding
+    gui.bt_arm_left_motion_up.bind("<Button-1>", woz_arm_left_motion_up)
+    gui.bt_arm_right_motion_up.bind("<Button-1>", woz_arm_right_motion_up)
+    gui.bt_arm_left_motion_down.bind("<Button-1>", woz_arm_left_motion_down)
+    gui.bt_arm_right_motion_down.bind("<Button-1>", woz_arm_right_motion_down)
+    gui.bt_arm_left_motion_pos_0.bind("<Button-1>", woz_arm_left_motion_pos_0)
+    gui.bt_arm_right_motion_pos_0.bind("<Button-1>", woz_arm_right_motion_pos_0)
+    gui.bt_arm_left_motion_pos_1.bind("<Button-1>", woz_arm_left_motion_pos_1)
+    gui.bt_arm_right_motion_pos_1.bind("<Button-1>", woz_arm_right_motion_pos_1)
+    gui.bt_arm_left_motion_pos_2.bind("<Button-1>", woz_arm_left_motion_pos_2)
+    gui.bt_arm_right_motion_pos_2.bind("<Button-1>", woz_arm_right_motion_pos_2)
+    gui.bt_arm_left_motion_pos_3.bind("<Button-1>", woz_arm_left_motion_pos_3)
+    gui.bt_arm_right_motion_pos_3.bind("<Button-1>", woz_arm_right_motion_pos_3)
+    gui.bt_arm_left_motion_shake.bind("<Button-1>", woz_arm_left_motion_shake)
+    gui.bt_arm_right_motion_shake.bind("<Button-1>", woz_arm_right_motion_shake)
+
+    # WoZ head motion buttons binding
+    gui.bt_head_motion_yes.bind("<Button-1>", woz_head_motion_yes)
+    gui.bt_head_motion_no.bind("<Button-1>", woz_head_motion_no)
+    gui.bt_head_motion_center.bind("<Button-1>", woz_head_motion_center)
+    gui.bt_head_motion_left.bind("<Button-1>", woz_head_motion_left)
+    gui.bt_head_motion_right.bind("<Button-1>", woz_head_motion_right)
+    gui.bt_head_motion_up.bind("<Button-1>", woz_head_motion_up)
+    gui.bt_head_motion_down.bind("<Button-1>", woz_head_motion_down)
+    gui.bt_head_motion_2left.bind("<Button-1>", woz_head_motion_2left)
+    gui.bt_head_motion_2right.bind("<Button-1>", woz_head_motion_2right)
+    gui.bt_head_motion_2up.bind("<Button-1>", woz_head_motion_2up)
+    gui.bt_head_motion_2down.bind("<Button-1>", woz_head_motion_2down)
+    gui.bt_head_motion_up_left.bind("<Button-1>", woz_head_motion_up_left)
+    gui.bt_head_motion_up_right.bind("<Button-1>", woz_head_motion_up_right)
+    gui.bt_head_motion_down_left.bind("<Button-1>", woz_head_motion_down_left)
+    gui.bt_head_motion_down_right.bind("<Button-1>", woz_head_motion_down_right)
+
+    # TTS buttons binding
+    gui.bt_send_tts.bind("<Button-1>", woz_tts)
+
+    uvicorn_thread = threading.Thread(target=run_uvicorn, daemon=True)
+    uvicorn_thread.start()
+
+    gui.mainloop()
